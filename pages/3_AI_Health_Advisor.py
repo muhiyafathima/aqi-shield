@@ -123,6 +123,7 @@ if st.session_state.pending_response:
                             *st.session_state.chat_history
                         ],
                         max_tokens=500,
+                        extra_body={"thinking": {"type": "disabled"}},
                         temperature=0.7
                     )
                     raw = response.choices[0].message.content
