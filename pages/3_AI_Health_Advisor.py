@@ -46,27 +46,19 @@ and safety precautions. You refer to India's CPCB AQI scale:
 Always give clear, simple, actionable advice. Keep answers short and easy to understand.
 Do not discuss topics unrelated to air quality or health."""
 
-# Initialize chat history and pending flag
+# Initialize chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-if "pending_response" not in st.session_state:
-    st.session_state.pending_response = False
 
-# Suggested questions — set pending flag so AI responds after rerun
+# Suggested questions
 st.write("**💡 Try asking:**")
 q1, q2, q3 = st.columns(3)
 if q1.button("Is AQI 180 safe for children?", use_container_width=True):
     st.session_state.chat_history.append({"role": "user", "content": "Is AQI 180 safe for children?"})
-    st.session_state.pending_response = True
-    st.rerun()
 if q2.button("What mask should I wear outdoors?", use_container_width=True):
     st.session_state.chat_history.append({"role": "user", "content": "What mask should I wear outdoors?"})
-    st.session_state.pending_response = True
-    st.rerun()
 if q3.button("How does PM2.5 affect lungs?", use_container_width=True):
     st.session_state.chat_history.append({"role": "user", "content": "How does PM2.5 affect lungs?"})
-    st.session_state.pending_response = True
-    st.rerun()
 
 st.divider()
 
@@ -83,10 +75,6 @@ user_input = st.chat_input("Ask about air quality or health precautions...")
 if user_input:
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     st.chat_message("user").write(user_input)
-    st.session_state.pending_response = True
-
-if st.session_state.pending_response:
-    st.session_state.pending_response = False
 
     if not GROQ_API_KEY:
         demo_reply = (
@@ -103,42 +91,19 @@ if st.session_state.pending_response:
         try:
             from groq import Groq
             client = Groq(api_key=GROQ_API_KEY)
-            response = None
             with st.spinner("Thinking..."):
-                # Auto-detect available models from this API key
-                try:
-                    all_models = client.models.list()
-                    # Filter to text/chat models (skip audio/vision/guard)
-                    MODELS = [
-                        m.id for m in all_models.data
-                        if not any(skip in m.id.lower() for skip in
-                                   ["whisper", "guard", "vision", "tts"])
-                    ]
-                except Exception:
-                    MODELS = []
-                # Try each available model
-                last_error = "No models available on this API key."
-                for model_id in MODELS:
-                    try:
-                        response = client.chat.completions.create(
-                            model=model_id,
-                            messages=[
-                                {"role": "system", "content": SYSTEM_PROMPT},
-                                *st.session_state.chat_history
-                            ],
-                            max_tokens=512,
-                            temperature=0.7
-                        )
-                        break
-                    except Exception as model_err:
-                        last_error = str(model_err)
-                        continue
-            if response:
-                reply = response.choices[0].message.content
-                st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                st.chat_message("assistant").write(reply)
-            else:
-                st.error(f"Groq error: {last_error}")
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        *st.session_state.chat_history
+                    ],
+                    max_tokens=512,
+                    temperature=0.7
+                )
+            reply = response.choices[0].message.content
+            st.session_state.chat_history.append({"role": "assistant", "content": reply})
+            st.chat_message("assistant").write(reply)
         except Exception as e:
             st.error(f"Error connecting to Groq: {e}")
 
