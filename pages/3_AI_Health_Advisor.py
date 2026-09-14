@@ -47,7 +47,8 @@ MODELS_TO_TRY = [
     "llama-3.1-8b-instant",
 ]
 
-SYSTEM_PROMPT = """You are an expert Air Quality and Public Health Advisor.
+SYSTEM_PROMPT = """/no_think
+You are an expert Air Quality and Public Health Advisor.
 You help users understand AQI (Air Quality Index) levels, health impacts of air pollution,
 and safety precautions. You refer to India's CPCB AQI scale:
 - Good (0-50): Safe for all
@@ -123,7 +124,6 @@ if st.session_state.pending_response:
                             *st.session_state.chat_history
                         ],
                         max_tokens=500,
-                        extra_body={"thinking": {"type": "disabled"}},
                         temperature=0.7
                     )
                     raw = response.choices[0].message.content
