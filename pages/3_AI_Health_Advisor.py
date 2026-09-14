@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import sys
-import re
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.helpers import show_sidebar_info
@@ -28,17 +27,12 @@ def get_api_key():
         return key
     return ""
 
-def strip_thinking(text):
-    """Remove <think>...</think> blocks from model output."""
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-
 GROQ_API_KEY = get_api_key()
 
-# Current active Groq models (as of 2026 per Groq deprecations page)
+# LLaMA models only — no thinking-tag models like qwen
 MODELS_TO_TRY = [
-    "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "qwen/qwen3.6-27b",
+    "llama-3.1-8b-instant",
 ]
 
 SYSTEM_PROMPT = """You are an expert Air Quality and Public Health Advisor.
@@ -118,8 +112,7 @@ if st.session_state.pending_response:
                         max_tokens=512,
                         temperature=0.7
                     )
-                    raw = response.choices[0].message.content
-                    reply = strip_thinking(raw)
+                    reply = response.choices[0].message.content.strip()
                     break
                 except Exception as e:
                     all_errors.append(f"{model_id}: {e}")
