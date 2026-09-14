@@ -122,7 +122,7 @@ if st.session_state.pending_response:
                             {"role": "system", "content": SYSTEM_PROMPT},
                             *st.session_state.chat_history
                         ],
-                        max_tokens=1024,
+                        max_tokens=500,
                         temperature=0.7
                     )
                     raw = response.choices[0].message.content
