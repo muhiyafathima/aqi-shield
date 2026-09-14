@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.helpers import show_sidebar_info
@@ -12,7 +13,7 @@ st.sidebar.caption("AI-Powered Air Quality Forecast")
 show_sidebar_info()
 
 st.title("💬 AI Health Advisor")
-st.caption("Ask any question about air quality, AQI levels, or health precautions. Powered by Groq LLaMA-3.")
+st.caption("Ask any question about air quality, AQI levels, or health precautions. Powered by Groq.")
 st.divider()
 
 def get_api_key():
@@ -27,10 +28,21 @@ def get_api_key():
         return key
     return ""
 
+def clean_response(text):
+    """Remove <think>...</think> blocks and any leftover think tags."""
+    # Remove complete <think>...</think> blocks
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    # Remove any remaining <think> tag and everything after it (unclosed tag)
+    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
+    # Remove </think> if it appears alone
+    text = text.replace("</think>", "")
+    return text.strip()
+
 GROQ_API_KEY = get_api_key()
 
-# LLaMA models only — no thinking-tag models like qwen
+# Models to try — qwen works on this key; LLaMA kept as fallback
 MODELS_TO_TRY = [
+    "qwen/qwen3.6-27b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
 ]
@@ -46,7 +58,8 @@ and safety precautions. You refer to India's CPCB AQI scale:
 - Severe (401-500): Emergency, stay indoors
 
 Always give clear, simple, actionable advice. Keep answers short and easy to understand.
-Do not discuss topics unrelated to air quality or health."""
+Do not discuss topics unrelated to air quality or health.
+Do not include any reasoning, thinking steps, or internal monologue in your response."""
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -109,10 +122,13 @@ if st.session_state.pending_response:
                             {"role": "system", "content": SYSTEM_PROMPT},
                             *st.session_state.chat_history
                         ],
-                        max_tokens=512,
+                        max_tokens=1024,
                         temperature=0.7
                     )
-                    reply = response.choices[0].message.content.strip()
+                    raw = response.choices[0].message.content
+                    reply = clean_response(raw)
+                    if not reply:
+                        reply = raw.strip()
                     break
                 except Exception as e:
                     all_errors.append(f"{model_id}: {e}")
