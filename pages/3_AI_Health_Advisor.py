@@ -29,26 +29,35 @@ def get_api_key():
     return ""
 
 def clean_response(text):
-    """Remove <think>...</think> blocks and any leftover think tags."""
+    """Extract the actual answer, stripping <think>...</think> blocks.
+    Returns None if no real answer is found (response is all thinking content)."""
     # Remove complete <think>...</think> blocks
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    # Remove any remaining <think> tag and everything after it (unclosed tag)
-    text = re.sub(r"<think>.*", "", text, flags=re.DOTALL)
-    # Remove </think> if it appears alone
-    text = text.replace("</think>", "")
-    return text.strip()
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    if cleaned:
+        return cleaned
+    # If </think> appears, get everything after it
+    if "</think>" in text:
+        after = text.split("</think>", 1)[1].strip()
+        if after:
+            return after
+    # Response starts with <think> and has no closing tag — all thinking, no answer
+    if text.strip().startswith("<think>"):
+        return None
+    return text.strip() or None
 
 GROQ_API_KEY = get_api_key()
 
-# Models to try — qwen works on this key; LLaMA kept as fallback
+# Non-thinking models first, Qwen last (it outputs <think> tags)
 MODELS_TO_TRY = [
-    "qwen/qwen3.6-27b",
-    "llama-3.3-70b-versatile",
+    "gemma2-9b-it",
     "llama-3.1-8b-instant",
+    "llama3-8b-8192",
+    "llama-3.3-70b-versatile",
+    "llama3-70b-8192",
+    "qwen/qwen3.6-27b",
 ]
 
-SYSTEM_PROMPT = """/no_think
-You are an expert Air Quality and Public Health Advisor.
+SYSTEM_PROMPT = """You are an expert Air Quality and Public Health Advisor.
 You help users understand AQI (Air Quality Index) levels, health impacts of air pollution,
 and safety precautions. You refer to India's CPCB AQI scale:
 - Good (0-50): Safe for all
@@ -59,8 +68,7 @@ and safety precautions. You refer to India's CPCB AQI scale:
 - Severe (401-500): Emergency, stay indoors
 
 Always give clear, simple, actionable advice. Keep answers short and easy to understand.
-Do not discuss topics unrelated to air quality or health.
-Do not include any reasoning, thinking steps, or internal monologue in your response."""
+Do not discuss topics unrelated to air quality or health."""
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
@@ -123,14 +131,16 @@ if st.session_state.pending_response:
                             {"role": "system", "content": SYSTEM_PROMPT},
                             *st.session_state.chat_history
                         ],
-                        max_tokens=500,
+                        max_tokens=800,
                         temperature=0.7
                     )
                     raw = response.choices[0].message.content
                     reply = clean_response(raw)
-                    if not reply:
-                        reply = raw.strip()
-                    break
+                    if reply is not None:
+                        break
+                    else:
+                        all_errors.append(f"{model_id}: response was only thinking tokens, no answer")
+                        continue
                 except Exception as e:
                     all_errors.append(f"{model_id}: {e}")
                     continue
