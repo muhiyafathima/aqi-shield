@@ -29,12 +29,11 @@ def get_api_key():
 
 GROQ_API_KEY = get_api_key()
 
-# Free-tier Groq models only — no llama-3.3-70b-versatile
+# Current active Groq models (as of 2026 per Groq deprecations page)
 MODELS_TO_TRY = [
     "llama-3.1-8b-instant",
-    "gemma2-9b-it",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
+    "llama-3.3-70b-versatile",
+    "qwen/qwen3.6-27b",
 ]
 
 SYSTEM_PROMPT = """You are an expert Air Quality and Public Health Advisor.
@@ -91,10 +90,8 @@ if st.session_state.pending_response:
     if not GROQ_API_KEY:
         demo_reply = (
             "⚠️ **Demo Mode** — Groq API key not found.\n\n"
-            "To enable the real AI advisor:\n"
-            "1. Go to https://console.groq.com and get a free API key\n"
-            "2. Add it to Streamlit Cloud Secrets as:\n"
-            "   GROQ_API_KEY = \"gsk_...\""
+            "Add it to Streamlit Cloud Secrets as:\n"
+            "GROQ_API_KEY = \"gsk_...\""
         )
         st.session_state.chat_history.append({"role": "assistant", "content": demo_reply})
         st.chat_message("assistant").write(demo_reply)
@@ -102,7 +99,7 @@ if st.session_state.pending_response:
         from groq import Groq
         client = Groq(api_key=GROQ_API_KEY)
         reply = None
-        last_error = ""
+        all_errors = []
 
         with st.spinner("Thinking..."):
             for model_id in MODELS_TO_TRY:
@@ -119,14 +116,14 @@ if st.session_state.pending_response:
                     reply = response.choices[0].message.content
                     break
                 except Exception as e:
-                    last_error = str(e)
+                    all_errors.append(f"{model_id}: {e}")
                     continue
 
         if reply:
             st.session_state.chat_history.append({"role": "assistant", "content": reply})
             st.chat_message("assistant").write(reply)
         else:
-            st.error(f"All models failed. Last error: {last_error}")
+            st.error("All models failed:\n\n" + "\n\n".join(all_errors))
 
 if st.session_state.chat_history:
     st.write("")
