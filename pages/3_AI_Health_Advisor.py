@@ -47,14 +47,11 @@ def clean_response(text):
 
 GROQ_API_KEY = get_api_key()
 
-# Non-thinking models first, Qwen last (it outputs <think> tags)
+# Updated Sep 2026 — llama & gemma decommissioned by Groq on Aug 16, 2026
 MODELS_TO_TRY = [
-    "gemma2-9b-it",
-    "llama-3.1-8b-instant",
-    "llama3-8b-8192",
-    "llama-3.3-70b-versatile",
-    "llama3-70b-8192",
-    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
 ]
 
 SYSTEM_PROMPT = """You are an expert Air Quality and Public Health Advisor.
